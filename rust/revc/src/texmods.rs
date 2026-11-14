@@ -197,12 +197,40 @@ fn index() -> &'static Index {
 /// (before the settings load), so the setting holds for every texture loaded after it.
 fn world_index() -> Option<&'static Index> {
     static WORLD: OnceLock<Index> = OnceLock::new();
+    if STYLE.load(Ordering::Relaxed) == 2 {
+        return xbox_world_index();
+    }
     if STYLE.load(Ordering::Relaxed) != 1 || !PS2_WORLD.load(Ordering::Relaxed) {
         return None;
     }
     let idx = WORLD.get_or_init(|| {
         let mut idx = Index::new();
         add_packs(&mut idx, &crate::ps2pack::world_dir(&crate::discimport::cache_dir()), 1);
+        idx
+    });
+    (!idx.is_empty()).then_some(idx)
+}
+
+/// The Xbox style's fill-in (`xbox-world.zip`, xboxworld.rs): only textures a PC dictionary lacks
+/// that the Xbox's world models use, so it adds and never replaces. Used while the Xbox world
+/// models are on; built the first time from the import's Xbox dictionaries if it isn't there.
+fn xbox_world_index() -> Option<&'static Index> {
+    static XBOX: OnceLock<Index> = OnceLock::new();
+    if !crate::ps2models::world_models_on(2) {
+        return None;
+    }
+    let idx = XBOX.get_or_init(|| {
+        let cache = crate::discimport::cache_dir();
+        let dir = crate::xboxworld::world_dir(&cache);
+        let zip = dir.join("xbox-world.zip");
+        crate::discimport::note_access(&zip);
+        if !zip.is_file() && cache.join("xbox").join("world").is_dir() {
+            if let Err(e) = crate::xboxworld::build(Path::new("."), &cache) {
+                eprintln!("xboxworld: {e}");
+            }
+        }
+        let mut idx = Index::new();
+        add_packs(&mut idx, &dir, 2);
         idx
     });
     (!idx.is_empty()).then_some(idx)

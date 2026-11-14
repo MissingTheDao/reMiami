@@ -6,6 +6,7 @@
 #   --wgpu   (accepted, no effect: the wgpu renderer is the only one; REVC_RENDERER_BACKEND=vulkan|gl
 #            picks its backend, Vulkan by default)
 # Needs a display (the game opens a window). Game data: REVC_GAME_DIR or ./game.
+# Console styles: scripts/styles.sh runs the per-style scenarios in all three UI styles.
 # Scenarios: scenes (console reference scenes at 640x480, REVC_TEST_SCENES/REVC_TEST_SCENE pick them), boot, saveload, savegame (save slot 1's game to slot 2, then load slot 2: own reference), formats, texmods, gamepad, spots (default), motion, pedhit (car hits peds at 320 fps: drawn where the physics has them), audio (scripted scene with sound; REVC_TEST_WAV=x.wav records it), cutscenes (new game: the opening's cutscenes, frames to $OUT/cutscenes/, fails on missing textures).
 # formats: compares what the C++ loaders read with the Rust parsers in rust/revc-formats.
 # oldsave: saveload of tests/saves/other/GTAVCsf1-64bit-gcc.b (slot 1's game as a 64-bit GCC build

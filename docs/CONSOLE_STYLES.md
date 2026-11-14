@@ -506,6 +506,19 @@ XboxLightmaps.cpp gives their dual passes the lightmaps (their second set is the
 already). The Xbox rebuilt and re-lit some map models (e.g. the shelf in Sonny's office, moved
 2.8 cm, int_b), so the PC models with the lightmaps grafted on can't look the same.
 
+Some Xbox models use textures their PC dictionary lacks (138 names in 57 dictionaries, used by 289
+models; e.g. the dock props in the opening's int_d). The Xbox import also keeps the Xbox's world
+dictionaries (`<import cache>/xbox/world/`, about 190 MB), and `rust/revc/src/xboxworld.rs` builds
+from them, once, `<import cache>/xbox/packs-world/xbox-world.zip` with exactly those textures
+(1.1 MB), from the Xbox's dictionary of the same name or its shared generic.txd. In the Xbox style,
+while `XboxWorldModels` is on, texmods adds them to the PC dictionary when it loads; nothing of the
+PC's is replaced, and the PC style never reads them. A name neither has stays missing (logged; the
+cutscene test fails on it). The count is pinned in the module's test (local data).
+
+Per-style tests: `scripts/test.sh` runs everything in the PC style. `scripts/styles.sh` runs the
+scenarios that differ per style in all three (saveload and savegame against each style's own local
+references, the new game's opening, and the PC-style import guard); it needs the console imports.
+
 ## Menu comparison shots
 
 `scripts/menu-shots.sh [out dir] [ps2|xbox ...]` runs `REVC_TEST=menus` (`rust/revc/src/testdrive.rs`,

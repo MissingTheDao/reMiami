@@ -71,7 +71,7 @@ fn sources(cache: &Path, console: Console) -> Vec<(String, PathBuf)> {
     out.into_iter().filter(|(_, p)| p.is_file()).collect()
 }
 
-fn png_bytes(w: u32, h: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
+pub(crate) fn png_bytes(w: u32, h: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
     let mut out = Vec::new();
     let mut enc = png::Encoder::new(&mut out, w, h);
     enc.set_color(png::ColorType::Rgba);
@@ -85,7 +85,7 @@ fn png_bytes(w: u32, h: u32, rgba: &[u8]) -> Result<Vec<u8>, String> {
 /// A zip with stored (uncompressed) entries: the PNGs are compressed already. ZIP64 records only
 /// where a value doesn't fit the classic fields (more than 65,535 entries, 4 GB); otherwise the
 /// classic layout, byte for byte.
-fn write_zip(path: &Path, files: &[(String, Vec<u8>)]) -> std::io::Result<()> {
+pub(crate) fn write_zip(path: &Path, files: &[(String, Vec<u8>)]) -> std::io::Result<()> {
     let tmp = path.with_extension("zip.part");
     std::fs::write(&tmp, zip_bytes(files))?;
     std::fs::rename(&tmp, path)

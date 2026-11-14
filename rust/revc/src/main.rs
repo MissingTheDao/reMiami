@@ -15,6 +15,7 @@ mod ziparchive;
 mod txdload;
 mod cshands;
 mod dffload;
+mod xboxworld;
 mod text;
 mod textutil;
 mod math;

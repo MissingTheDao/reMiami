@@ -233,7 +233,10 @@ pub fn import(disc: &mut Disc, image: &Path, cache: &Path) -> Result<Report, Str
     let archives: u64 = disc.entries.iter().filter(|e| {
         let p = e.path.to_ascii_lowercase();
         (p.starts_with("models/gta3") && p.ends_with(".img")) || p == "anim/cuts.img"
-    }).map(|e| e.size).sum();
+    }).map(|e| e.size).sum::<u64>()
+        // the Xbox's archive entries are LZO-compressed and are written unpacked (models,
+        // world dictionaries): a generous bound for what they unpack to
+        * if disc.kind == DiscKind::Xbox { 3 } else { 1 };
     let needed: u64 = wanted.iter().map(|(e, _)| e.size).sum::<u64>()
         + ps2_audio.iter().map(|e| e.size).sum::<u64>()
         + disc.entries.iter().filter(|e| map_file_dest(&e.path).is_some()).map(|e| e.size).sum::<u64>()
@@ -320,18 +323,32 @@ pub fn import(disc: &mut Disc, image: &Path, cache: &Path) -> Result<Report, Str
                     report.written.push(dest);
                     continue;
                 }
-                if !names.contains(stem) {
-                    continue;
-                }
                 let off = u32::from_le_bytes(e[0..4].try_into().unwrap()) as u64 * 2048;
                 let size = u32::from_le_bytes(e[4..8].try_into().unwrap()) as usize * 2048;
                 let raw = disc.read_range(&i, off, size).map_err(|err| format!("{name}: {err}"))?;
                 let data = xboxlm::img_entry(&raw).map_err(|err| format!("{name}: {err}"))?;
+                // World dictionaries: the textures the Xbox's models use that a PC dictionary
+                // lacks come from these (revc/src/xboxworld.rs); the generic slot is the disc's
+                // standalone models/generic.txd (below)
+                if !names.contains(stem) {
+                    if stem != "generic" {
+                        let dest = root.join("world").join(&name);
+                        space::write_file(&dest, &data)?;
+                        report.written.push(dest);
+                    }
+                    continue;
+                }
                 let dest = root.join("vehicles").join(&name);
                 space::write_file(&dest, &data)?;
                 report.written.push(dest);
             }
             eprintln!("revc-import: {models} Xbox models converted; kept as PC models: {kept_pc:?}");
+            if let Some(g) = disc.find("models/generic.txd").cloned() {
+                let data = disc.read(&g).map_err(|e| format!("generic.txd: {e}"))?;
+                let dest = root.join("world").join("generic.txd");
+                space::write_file(&dest, &data)?;
+                report.written.push(dest);
+            }
         }
         for (bin, txd) in lightmaps {
         for (file, data) in [("lightmaps.bin", bin), ("lightmaps.txd", txd)] {
