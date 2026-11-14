@@ -1,3 +1,32 @@
+--- a/src/objects/CutsceneObject.cpp
++++ b/src/objects/CutsceneObject.cpp
+@@ -13,6 +13,7 @@
+ #include "Timecycle.h"
+ #include "CutsceneShadow.h"
+ #include "CutsceneObject.h"
++#include "CutsceneHands.h"
+ #include "ModelIndices.h"
+ #include "RpAnimBlend.h"
+ 
+@@ -145,12 +146,18 @@
+ 		RpGeometrySetFlags(geometry, RpGeometryGetFlags(geometry) | rpGEOMETRYMODULATEMATERIALCOLOR);
+ 		RpGeometryForAllMaterials(geometry, MaterialSetAlpha, (void*)255);
+ 	}
++#ifdef LIBRW_HOST
++	CutsceneHands::PreRender(this);	// (revc: the Xbox's cutscene hands)
++#endif
+ }
+ 
+ void
+ CCutsceneObject::Render(void)
+ {
+ 	SetCullMode(rwCULLMODECULLNONE);
++#ifdef LIBRW_HOST
++	CutsceneHands::Render(this);	// (revc: the Xbox's cutscene hands, before the character as there)
++#endif
+ 	CObject::Render();
+ 	SetCullMode(rwCULLMODECULLBACK);
+ }
 --- a/src/objects/ObjectData.cpp
 +++ b/src/objects/ObjectData.cpp
 @@ -8,128 +8,39 @@

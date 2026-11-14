@@ -95,7 +95,15 @@
  	static void CreateAnimAssocGroups(void);
 --- a/src/animation/CutsceneMgr.cpp
 +++ b/src/animation/CutsceneMgr.cpp
-@@ -23,6 +23,9 @@
+@@ -1,6 +1,7 @@
+ #include "common.h"
+ 
+ #include "General.h"
++#include "CutsceneHands.h"
+ #include "CutsceneMgr.h"
+ #include "Directory.h"
+ #include "Camera.h"
+@@ -23,6 +24,9 @@
  #include "Radar.h"
  #include "Pools.h"
  
@@ -105,7 +113,13 @@
  const struct {
  	const char *szTrackName;
  	int iTrackId;
-@@ -178,6 +181,28 @@
+@@ -175,9 +179,34 @@
+ void
+ CCutsceneMgr::Shutdown(void)
+ {
++#ifdef LIBRW_HOST
++	CutsceneHands::Shutdown();
++#endif
  	delete ms_pCutsceneDir;
  }
  
@@ -134,7 +148,7 @@
  void
  CCutsceneMgr::LoadCutsceneData(const char *szCutsceneName)
  {
-@@ -200,8 +225,16 @@
+@@ -200,8 +229,16 @@
  
  	strcpy(ms_cutsceneName, szCutsceneName);
  
@@ -152,7 +166,7 @@
  	assert(stream);
  
  	// Load animations
-@@ -209,7 +242,8 @@
+@@ -209,7 +246,8 @@
  	if (ms_pCutsceneDir->FindItem(gString, offset, size)) {
  		CStreaming::MakeSpaceFor(size << 11);
  		CStreaming::ImGonnaUseStreamingMemory();
@@ -162,7 +176,7 @@
  		CAnimManager::LoadAnimFile(stream, true, uncompressedAnims);
  		ms_cutsceneAssociations.CreateAssociations(szCutsceneName);
  		CStreaming::IHaveUsedStreamingMemory();
-@@ -220,11 +254,11 @@
+@@ -220,11 +258,11 @@
  	RwStreamClose(stream, nil);
  
  	// Load camera data
@@ -176,7 +190,17 @@
  		TheCamera.LoadPathSplines(file);
  		CStreaming::IHaveUsedStreamingMemory();
  		bCamLoaded = true;
-@@ -540,6 +574,7 @@
+@@ -416,6 +454,9 @@
+ {
+ 	if (!ms_loaded) return;
+ 	CTimer::Suspend();
++#ifdef LIBRW_HOST
++	CutsceneHands::EndCutscene();	// (revc: its objects go now)
++#endif
+ 
+ 	ms_cutsceneProcessing = false;
+ 	ms_useLodMultiplier = false;
+@@ -540,6 +581,7 @@
  	if (bCamLoaded)
  		if (CGeneral::faststricmp(ms_cutsceneName, "finale") && TheCamera.Cams[TheCamera.ActiveCam].Mode == CCam::MODE_FLYBY && ms_cutsceneLoadStatus == CUTSCENE_LOADING_0) {
  			if (CPad::GetPad(0)->GetCrossJustDown()

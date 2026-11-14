@@ -13,6 +13,7 @@ mod padscript;
 mod texmods;
 mod ziparchive;
 mod txdload;
+mod cshands;
 mod dffload;
 mod text;
 mod textutil;

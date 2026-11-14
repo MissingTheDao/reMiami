@@ -401,6 +401,17 @@ happens, no restart: tear gas hurts Tommy and mission characters (#68; `core/Wor
 SetPedsChoking). The PC and Xbox styles keep the PC's behaviour. Map data per style also changes
 what is where (above), but it takes effect at the next start.
 
+## Xbox cutscene hands (R4, in progress)
+
+In the Xbox style, cutscene characters get the Xbox's separate hand models in place of their own
+hands, with the colour, size, position and finger pose the Xbox's `data/cutscenehands.xml` gives
+per cutscene and character (read from the import; `extras/CutsceneHands.cpp`).
+
+Open point: whenever a hand is shown, the Xbox also shrinks the character's bones 54-63, which are
+the toes in many of its cutscene models. reMiami leaves that out until a capture of an Xbox
+cutscene with a character's feet in view shows what the console really does (PLAYTEST). A model
+without the hand bone gets no replacement hand (the Xbox's would drift).
+
 ## Xbox models with native skins
 
 The Xbox's cutscene character models (all 74 `cs*.dff` on the disc, the cutscene hands among

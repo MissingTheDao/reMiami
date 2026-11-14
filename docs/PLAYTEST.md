@@ -138,6 +138,8 @@ Around Ocean Beach:
       the menu brings back the orange ones. [R4]
 - [ ] The fireball particle (frames 30-43 of the Xbox flame), from car backfires and the
       flamethrower; no test scene reaches it. [R4]
+- [ ] Xbox style, cutscenes: the characters' hands are the Xbox's (skin-coloured, posed). On a
+      real Xbox, are the characters' toes shrunk in cutscenes? (reMiami leaves them alone.) [R4]
 - [ ] In the PS2 style, burning cars and explosions look like on a PS2 (orange, as the PC); only
       compared against stills from an unreliable savestate so far. [R4]
 
