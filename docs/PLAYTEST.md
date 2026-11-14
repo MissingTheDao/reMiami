@@ -140,8 +140,6 @@ Around Ocean Beach:
       flamethrower; no test scene reaches it. [R4]
 - [ ] Xbox style, cutscenes: the characters' hands are the Xbox's (skin-coloured, posed). On a
       real Xbox, are the characters' toes shrunk in cutscenes? (reMiami leaves them alone.) [R4]
-- [ ] Xbox style, the hotel phone call after the opening (int_b): on a real Xbox, does Tommy's hand
-      close around the handset? In reMiami it sits against it. [R4]
 - [ ] In the PS2 style, burning cars and explosions look like on a PS2 (orange, as the PC); only
       compared against stills from an unreliable savestate so far. [R4]
 

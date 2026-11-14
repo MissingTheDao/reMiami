@@ -412,9 +412,9 @@ the toes in many of its cutscene models. reMiami leaves that out until a capture
 cutscene with a character's feet in view shows what the console really does (PLAYTEST). A model
 without the hand bone gets no replacement hand (the Xbox's would drift).
 
-Open point: in int_b (Tommy on the hotel phone) the hand does not enclose the handset; it sits
-against it. The animation and the skeleton are the same as the Xbox's; not yet compared with the
-console (an Xbox capture of that cutscene will settle it).
+Checked against the console (an Xbox recording of int_b, the hotel phone call, 2026-11-14): the
+Xbox's hand doesn't enclose the handset either; it rests against it with the fingers curled over
+the top, as in reMiami, and the left hand is posed too.
 
 ## Xbox models with native skins
 
