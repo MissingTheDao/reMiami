@@ -430,6 +430,19 @@ Later: the import has no format version (`IMPORTED.txt` records only the disc im
 count), so the first change to what an import writes will need one, to tell an old import from a
 current one.
 
+## PS2 radio and cutscene audio (R5b)
+
+In the PS2 style the radio stations, the ambience tracks and the cutscene speech play from the
+player's PS2 import (`ps2/audio/music/*.vb`, `ps2/audio/cutscene/<group>/*.vb`, R5a) instead of
+the PC's ADF/MP3 files: reVC's PS2 stream table and VB decoder (`PS2_AUDIO_PATHS`, `CVbFile`:
+headerless PS-ADPCM, stereo, 0x2000 bytes per channel per block) with the paths resolved into the
+import (`audio/oal/stream.cpp` Ps2StreamPath). Rates: 32 kHz, and 16 kHz for the two talk stations
+and the police scanner (measured: their lengths match the PC files at those rates). A stream the
+import lacks falls back to the PC's. The stations' lengths differ from the PC's (Flash FM about
+3 minutes longer), so the radio positions use the PS2 lengths in the PS2 style, measured the first
+time that style plays (`sampman_oal.cpp`), and wrap when the style changes. Other styles never read
+the PS2 audio. The PS2 sound effects (R5c) are a separate item.
+
 ## Xbox fire (R4)
 
 The Xbox's flames burn white-hot and are animated; the PC and PS2 use one orange flame texture.

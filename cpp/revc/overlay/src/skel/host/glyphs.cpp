@@ -6,6 +6,7 @@
 #if defined LIBRW_HOST
 
 #include "common.h"
+#include "MusicManager.h"
 #include "rwcore.h"
 #include "skeleton.h"
 #include "Font.h"
@@ -137,6 +138,7 @@ HostUpdateButtonGlyphs(void)
 		CFont::Initialise();
 		CHud::ReloadTextures();
 		CParticle::ApplyStyle();	// the Xbox style's fire (particle values and flame frames)
+		MusicManager.RefreshTrackLengths();	// the PS2 style's radio and cutscene streams (R5b)
 		LoadedGlyphSet = 0;	// CFont::Initialise put back the game's buttons
 	}
 	int set = revc_glyph_set_id();

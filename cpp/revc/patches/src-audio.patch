@@ -36,6 +36,39 @@
  	#include <string.h>
  
  	#ifndef GUID_DEFINED
+--- a/src/audio/MusicManager.cpp
++++ b/src/audio/MusicManager.cpp
+@@ -26,6 +26,20 @@
+ #endif
+ 
+ cMusicManager MusicManager;
++
++// revc (R5b): the streams' lengths for the UI style now in use (the PS2 style plays the PS2 radio,
++// whose stations last differently); the radio positions wrap into them
++void
++cMusicManager::RefreshTrackLengths(void)
++{
++	if (!m_bIsInitialised)
++		return;
++	for (int i = 0; i < TOTAL_STREAMED_SOUNDS; i++) {
++		m_aTracks[i].m_nLength = SampleManager.GetStreamedFileLength(i);
++		if (m_aTracks[i].m_nLength != 0)
++			m_aTracks[i].m_nPosition %= m_aTracks[i].m_nLength;
++	}
++}
+ int32 gNumRetunePresses;
+ int32 gRetuneCounter;
+ bool8 g_bAnnouncementReadPosAlready;
+--- a/src/audio/MusicManager.h
++++ b/src/audio/MusicManager.h
+@@ -16,6 +16,7 @@
+ class cMusicManager
+ {
+ public:
++	void RefreshTrackLengths(void);	// revc (R5b): after a UI style change
+ 	bool8 m_bIsInitialised;
+ 	bool8 m_bDisabled;
+ 	bool8 m_bSetNextStation;
 --- a/src/audio/oal/channel.h
 +++ b/src/audio/oal/channel.h
 @@ -1,10 +1,7 @@
@@ -60,7 +93,43 @@
  
  std::thread	gAudioThread;
  std::mutex gAudioThreadQueueMutex;
-@@ -1290,6 +1291,8 @@
+@@ -1235,9 +1236,35 @@
+ {
+ }
+ 
++#ifdef LIBRW_HOST
++extern int8 gUiStyle;
++extern "C" int revc_import_path(int kind, const char *rel, char *out, size_t cap);
++
++// revc (R5b): in the PS2 UI style the PS2 streams (AUDIO\MUSIC\*.VB, AUDIO\CUTSCENE\**\*.VB) come
++// from the player's PS2 import; without it, the name stays and the PC stream is opened as before.
++static const char *
++Ps2StreamPath(const char *name, char *buf, size_t cap)
++{
++	if (gUiStyle != 1)
++		return name;
++	size_t len = strlen(name);
++	if ((strncasecmp(name, "AUDIO\\MUSIC\\", 12) != 0 && strncasecmp(name, "AUDIO\\CUTSCENE\\", 15) != 0) ||
++	    len < 3 || len >= 128 || strcasecmp(name + len - 3, ".VB") != 0)
++		return name;
++	char rel[128];
++	for (size_t i = 0; i <= len; i++)
++		rel[i] = name[i] == '\\' ? '/' : tolower(name[i]);
++	return revc_import_path(1, rel, buf, cap) > 0 ? buf : name;
++}
++#endif
++
+ bool CStream::Open(const char* filename, uint32 overrideSampleRate)
+ {
+ 	if (IsOpened()) return false;
++#ifdef LIBRW_HOST
++	char ps2Path[512];
++	filename = Ps2StreamPath(filename, ps2Path, sizeof(ps2Path));
++#endif
+ 
+ #ifdef MULTITHREADED_AUDIO
+ 	std::unique_lock<std::mutex> lock(m_mutex);
+@@ -1290,6 +1317,8 @@
  	else 
  		m_pSoundFile = nil;
  
@@ -473,3 +542,63 @@
  	
  	if ( nSfx < SAMPLEBANK_MAX )
  	{
+@@ -1981,11 +1810,59 @@
+ 	}
+ }
+ 
++#ifdef LIBRW_HOST
++extern int8 gUiStyle;
++extern "C" int revc_import_path(int kind, const char *rel, char *out, size_t cap);
++
++// revc (R5b): the PS2 streams' lengths (ms; 0: not in the PS2 import), measured from the files the
++// first time the PS2 UI style asks, so no other style reads the import
++static uint32 nStreamLengthPs2[TOTAL_STREAMED_SOUNDS];
++static bool8 ps2LengthsDone;
++
++static void
++MeasurePs2Streams(void)
++{
++	ps2LengthsDone = true;
++	for (uint32 i = 0; i < TOTAL_STREAMED_SOUNDS; i++) {
++		nStreamLengthPs2[i] = 0;
++		const char *name = PS2StreamedNameTable[i];
++		size_t len = strlen(name);
++		if ((strncasecmp(name, "AUDIO\\MUSIC\\", 12) != 0 && strncasecmp(name, "AUDIO\\CUTSCENE\\", 15) != 0) ||
++		    len < 3 || len >= 128 || strcasecmp(name + len - 3, ".VB") != 0)
++			continue;
++		char rel[128], path[512];
++		for (size_t k = 0; k <= len; k++)
++			rel[k] = name[k] == '\\' ? '/' : tolower(name[k]);
++		if (revc_import_path(1, rel, path, sizeof(path)) <= 0)
++			continue;
++		FILE *f = fopen(path, "rb");
++		if (f == nil)
++			continue;
++		fseek(f, 0, SEEK_END);
++		long size = ftell(f);
++		fclose(f);
++		if (size <= 0)
++			continue;
++		// headerless PS-ADPCM, stereo: 28 samples per channel in every 16 bytes
++		uint64 frames = (uint64)size / 16 * 28 / 2;
++		nStreamLengthPs2[i] = (uint32)(frames * 1000 / (IsThisTrackAt16KHz(i) ? 16000 : 32000));
++	}
++}
++#endif
++
+ int32
+ cSampleManager::GetStreamedFileLength(uint8 nStream)
+ {
+ 	ASSERT( nStream < TOTAL_STREAMED_SOUNDS );
+ 
++#ifdef LIBRW_HOST
++	if (gUiStyle == 1) {
++		if (!ps2LengthsDone)
++			MeasurePs2Streams();
++		if (nStreamLengthPs2[nStream] != 0)
++			return nStreamLengthPs2[nStream];
++	}
++#endif
+ 	return nStreamLength[nStream];
+ }
+ 
