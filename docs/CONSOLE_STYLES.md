@@ -430,6 +430,26 @@ Later: the import has no format version (`IMPORTED.txt` records only the disc im
 count), so the first change to what an import writes will need one, to tell an old import from a
 current one.
 
+## Console menus: PC pages and Quit
+
+In the PS2 and Xbox styles the pause menu shows the console skin's own pages. A switch to a page the
+skin doesn't draw goes back to the last page it drew (`Frontend.cpp` SwitchToNewScreen,
+MenuConsolePcPage), so no menu path reaches the PC menu's pages: its New Game page, its Options,
+Display, Graphics, Language and Controller pages, its delete pages. Deliberate exceptions, drawn by
+the PC menu:
+- keyboard and mouse controls and joystick detection: the PC's input setup, reached from the
+  console options' controls section (the consoles had nothing to set up); "back" returns there;
+- the PC save and load code's transient and warning screens (loading, the cheat and save error
+  warnings, "saved");
+- the mission retry prompt (a PC addition) and the quit screen.
+The front end before a game is loaded is the PC menu in every style. `REVC_TEST=menuwalk` walks
+every page reachable in the console style through the real page switch (each row's target, back,
+and the switches the game makes in code) and fails on any other PC page.
+
+Quit: the consoles had no "quit game"; a PC needs one. Both skins have it on their Load page under
+"new game" (the PC's pause menu keeps "start new game" and "quit game" together), with the PC's
+confirmation drawn as the skin's own dialog. A deliberate difference from the consoles.
+
 ## PS2 radio and cutscene audio (R5b)
 
 In the PS2 style the radio stations, the ambience tracks and the cutscene speech play from the

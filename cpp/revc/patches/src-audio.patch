@@ -59,6 +59,30 @@
  int32 gNumRetunePresses;
  int32 gRetuneCounter;
  bool8 g_bAnnouncementReadPosAlready;
+@@ -1343,6 +1357,14 @@
+ 			default: return;
+ 			};
+ 
++#ifdef FIX_BUGS
++			// revc: this draws on every rendered frame, and with the fixed 30 Hz simulation several
++			// frames can follow one step, each seeing that step's GetLogicalFramesPassed(); count
++			// the 30 Hz frames that really passed since the last draw (60 = 2 s, as in the original)
++			static uint32 lastCounter = CTimer::GetLogicalFrameCounter();
++			uint32 passed = CTimer::GetLogicalFrameCounter() - lastCounter;
++			lastCounter = CTimer::GetLogicalFrameCounter();
++#endif
+ 			if (pCurrentStation != string) {
+ 				pCurrentStation = string;
+ 				cDisplay = 60;
+@@ -1350,7 +1372,7 @@
+ 			else {
+ 				if (cDisplay == 0) return;
+ #ifdef FIX_BUGS
+-				cDisplay -= CTimer::GetLogicalFramesPassed();
++				cDisplay = passed >= cDisplay ? 0 : cDisplay - passed;
+ #else
+ 				cDisplay--;
+ #endif
 --- a/src/audio/MusicManager.h
 +++ b/src/audio/MusicManager.h
 @@ -16,6 +16,7 @@

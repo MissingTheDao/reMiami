@@ -340,10 +340,10 @@
 +#define COUNTER_PITCH (HUD_PS2 ? HUD_SY * 20.0f : HUD_XBOX ? 25.0f : HUD_TEXT_SCALE_Y * 20.f)
 +#define TIMER_LABEL_DX (HUD_XBOX ? 90.0f : 80.0f)	// (the label's right edge left of the number)
 +static bool xboxSubtitleShown;	// revc: an in-game subtitle was drawn this frame (the Xbox lifts the mission title)
-+// The PS2's own font atlas (a texture pack's fonts/font2) has the armour and star icons at '[' and
-+// ']' where the PC's has '<' and '>' (PS2 v1.40, research).
-+extern "C" int revc_texmod_has(const char *txd, const char *texture);
-+static bool Ps2FontIcons(void) { return HUD_PS2 && revc_texmod_has("fonts", "font2"); }
++// The armour and wanted-star icons are '<' and '>' of font1 (FONT_STANDARD) in every style. The PS2's
++// own atlas has them at '[' and ']', but the PS2 font pack is remapped into the PC character layout
++// (Claude outputs/ps2-textures/ps2_font_remap.py), so the PC characters are right there too; a font
++// pack for any style has to follow the PC layout.
 +
 +
  #if defined(FIX_BUGS)
@@ -468,18 +468,15 @@
  						}
  					}
  				}
-@@ -596,9 +632,9 @@
+@@ -596,7 +632,7 @@
  				DrawArmour
  			*/
  			if (m_ItemToFlash == ITEM_ARMOUR && FRAMECOUNTER & 8 || m_ItemToFlash != ITEM_ARMOUR) {
 -				CFont::SetScale(SCREEN_SCALE_X(HUD_TEXT_SCALE_X), SCREEN_SCALE_Y(HUD_TEXT_SCALE_Y));
 +				CFont::SetScale(SCREEN_SCALE_X(HUD_TEXT_SCALE_X), SCREEN_SCALE_Y(HUD_SY));
  				if (playerPed->m_fArmour > 1.0f) {
--					AsciiToUnicode("<", sPrintIcon);
-+					AsciiToUnicode(Ps2FontIcons() ? "[" : "<", sPrintIcon);
+ 					AsciiToUnicode("<", sPrintIcon);
  #ifdef FIX_BUGS
- 					sprintf(sTemp, "%03d", int32(playerPed->m_fArmour + 0.5f));
- #else
 @@ -609,11 +645,11 @@
  					CFont::SetColor(ARMOUR_COLOR);
  					if (FrontEndMenuManager.m_PrefsShowHud) {
@@ -494,7 +491,7 @@
  						}
  					}
  				}
-@@ -632,14 +668,14 @@
+@@ -632,7 +668,7 @@
  
  		if (m_WantedState != FADED_OUT) {
  			CFont::SetBackgroundOff();
@@ -503,14 +500,6 @@
  			CFont::SetJustifyOff();
  			CFont::SetCentreOff();
  			CFont::SetRightJustifyOn();
- 			CFont::SetPropOn();
- 			CFont::SetFontStyle(FONT_STANDARD);
- 
--			AsciiToUnicode(">", sPrintIcon);
-+			AsciiToUnicode(Ps2FontIcons() ? "]" : ">", sPrintIcon);
- 
- 			for (int i = 0; i < 6; i++) {
- 				if (FrontEndMenuManager.m_PrefsShowHud) {
 @@ -649,17 +685,17 @@
  
  						WANTED_COLOR.a = alpha;

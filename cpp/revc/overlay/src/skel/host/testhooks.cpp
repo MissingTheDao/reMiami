@@ -523,6 +523,99 @@ revc_test_sweep_state(int idx, int *page, int *row)
 	return 0;
 }
 
+}	// extern "C"
+bool MenuSkinXboxSave(int page, bool gameNotLoaded);
+bool MenuConsolePcPage(int page);
+extern "C" {
+
+static void
+WalkAppend(char *out, int cap, int *pos, const char *text)
+{
+	if (*pos >= cap - 1)
+		return;
+	int n = snprintf(out + *pos, cap - *pos, "%s", text);
+	*pos = n < 0 ? *pos : Min(cap - 1, *pos + n);
+}
+
+// REVC_TEST=menuwalk: every page reachable in the console style's menu through the real page
+// switch (each row's target and "back" from every page reached, breadth first, plus the switches
+// the game makes in code, e.g. after a failed load). Returns the number of switches that ended on a
+// page the console style mustn't show (not drawn by its skin and not one of the listed PC pages,
+// Frontend.cpp MenuConsolePcPage); the report lists them as "from:row->to", "from:back->to" or
+// "from:direct->to", then " | visited N".
+int
+revc_test_menu_walk(char *out, int cap)
+{
+	CMenuManager &m = FrontEndMenuManager;
+	auto ok = [](int page) {
+		if (page == MENUPAGE_NONE || MenuConsolePcPage(page))
+			return true;
+		if (gUiStyle == 1)
+			return MenuSkinPS2Active(page, false);
+		return MenuSkinXboxActive(page, false) || MenuSkinXboxSave(page, false);
+	};
+	int pos = 0, bad = 0, head = 0, tail = 0, visitedN = 0;
+	if (cap > 0)
+		out[0] = '\0';
+	static int queue[MENUPAGES];
+	static bool visited[MENUPAGES];
+	memset(visited, 0, sizeof(visited));
+	auto enqueue = [&](int page) {
+		if (page >= 0 && page < MENUPAGES && !visited[page]) {
+			visited[page] = true;
+			visitedN++;
+			queue[tail++] = page;
+		}
+	};
+	int first = gUiStyle == 1 ? MenuSkinPS2TabPage(0) : MenuSkinXboxTabPage(0);
+	for (int i = 0; ; i++) {
+		int t = gUiStyle == 1 ? MenuSkinPS2TabPage(i) : MenuSkinXboxTabPage(i);
+		if (t < 0)
+			break;
+		enqueue(t);
+	}
+	enqueue(MENUPAGE_CONSOLE_OPTIONS);
+	char item[48];
+	auto check = [&](int from, const char *how, int to) {
+		if (!ok(to)) {
+			bad++;
+			snprintf(item, sizeof(item), "%d:%s->%d ", from, how, to);
+			WalkAppend(out, cap, &pos, item);
+		} else if (to != MENUPAGE_NONE && to != MENUPAGE_OUTRO)
+			enqueue(to);
+	};
+	while (head < tail) {
+		int p = queue[head++];
+		for (int r = 0; r < NUM_MENUROWS; r++) {
+			if (aScreens[p].m_aEntries[r].m_Action != MENUACTION_CHANGEMENU || aScreens[p].m_aEntries[r].m_EntryName[0] == '\0')
+				continue;
+			m.m_nCurrScreen = p;
+			m.m_nCurrOption = r;
+			m.SwitchToNewScreen(0);
+			char how[8];
+			snprintf(how, sizeof(how), "%d", r);
+			check(p, how, m.m_nCurrScreen);
+		}
+		m.m_nCurrScreen = p;
+		m.m_nCurrOption = 0;
+		m.SwitchToNewScreen(-2);
+		check(p, "back", m.m_nCurrScreen);
+	}
+	static const int direct[] = { MENUPAGE_NEW_GAME, MENUPAGE_OPTIONS, MENUPAGE_CONTROLLER_PC,
+		MENUPAGE_DISPLAY_SETTINGS, MENUPAGE_LANGUAGE_SETTINGS, MENUPAGE_CHOOSE_DELETE_SLOT };
+	for (int target : direct) {
+		m.m_nCurrScreen = first;
+		m.m_nCurrOption = 0;
+		m.SwitchToNewScreen(target);
+		check(first, "direct", m.m_nCurrScreen);
+	}
+	snprintf(item, sizeof(item), " | visited %d", visitedN);
+	WalkAppend(out, cap, &pos, item);
+	m.m_nCurrScreen = m.m_nPrevScreen = first;
+	m.m_nCurrOption = 0;
+	return bad;
+}
+
 // Sets the focus for the sweep: the tab/icon bar (list 0) or the page's list (1).
 void
 revc_test_menu_set_focus(int page, int list)
@@ -561,7 +654,7 @@ revc_test_menu_page_id(const char *name)
 		{ "stats", MENUPAGE_STATS }, { "brief", MENUPAGE_BRIEFS }, { "audio", MENUPAGE_SOUND_SETTINGS },
 		{ "display", MENUPAGE_DISPLAY_SETTINGS }, { "graphics", MENUPAGE_GRAPHICS_SETTINGS }, { "map", MENUPAGE_MAP },
 		{ "new_game_confirm", MENUPAGE_NEW_GAME_RELOAD }, { "load", MENUPAGE_CHOOSE_LOAD_SLOT },
-		{ "load_confirm", MENUPAGE_LOAD_SLOT_CONFIRM }, { "save", MENUPAGE_CHOOSE_SAVE_SLOT },
+		{ "load_confirm", MENUPAGE_LOAD_SLOT_CONFIRM }, { "quit_confirm", MENUPAGE_EXIT }, { "save", MENUPAGE_CHOOSE_SAVE_SLOT },
 		{ "controls", MENUPAGE_CONTROLLER_PC }, { "pad", MENUPAGE_PAD_PICTURE }, { "pause", MENUPAGE_PAUSE_MENU },
 		{ "console_display", MENUPAGE_CONSOLE_DISPLAY }, { "console_controls", MENUPAGE_CONSOLE_CONTROLS },
 		{ "new_game", MENUPAGE_NEW_GAME },

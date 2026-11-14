@@ -108,6 +108,7 @@ unsafe extern "C" {
     fn revc_test_menu_where(open: *mut i32, page: *mut i32, row: *mut i32) -> i32;
     fn revc_test_world_start(kind: i32, x: f32, y: f32, heading: f32);
     fn revc_test_sweep_state(idx: i32, page: *mut i32, row: *mut i32) -> i32;
+    fn revc_test_menu_walk(out: *mut std::ffi::c_char, cap: i32) -> i32;
     fn revc_test_menu_set_focus(page: i32, list: i32);
     fn revc_test_menu_status(open: *mut i32, page: *mut i32, row: *mut i32, skinned: *mut i32, fading: *mut i32);
     fn revc_test_telemetry(out: *mut f32, anim: *mut std::ffi::c_char, anim_len: i32, anim_time: *mut f32);
@@ -144,6 +145,8 @@ enum Scenario {
     PadScript,
     MenuSweep,
     Cutscenes,
+    Screenshot,
+    MenuWalk,
 }
 
 #[derive(Debug)]
@@ -173,6 +176,8 @@ enum Phase {
     Scanner { t0: u32 },
     /// Pad script (REVC_TEST_PAD_SCRIPT): frames since the start state was set.
     PadScript { frame: u32 },
+    Screenshot { frame: u32 },
+    MenuWalk,
     /// Button sweep: state `idx` (revc_test_sweep_state), pad button `button`, frames into it.
     MenuSweep { idx: i32, button: u32, frame: u32, flagged: u32 },
     /// Cutscenes: game time `t0` the game started, `last` the last frame saved (game time).
@@ -257,6 +262,7 @@ const MENU_SHOTS_PS2: &[MenuShot] = &[
     ("save_slots", "save", 1, -1, -1, -1, 1000),
     ("load_confirm", "load_confirm", 1, -1, -1, -1, 1000),
     ("new_game_confirm", "new_game_confirm", 1, -1, -1, -1, 1000),
+    ("quit_confirm", "quit_confirm", 1, -1, -1, -1, 1000),
 ];
 const MENU_SHOTS_XBOX: &[MenuShot] = &[
     ("map_legend_on", "map", 0, -1, -1, 1, 1000),
@@ -284,6 +290,7 @@ const MENU_SHOTS_XBOX: &[MenuShot] = &[
     ("load_top", "new_game", 0, -1, -1, -1, 1000),
     ("load_slots", "load", 1, -1, -1, -1, 1000),
     ("load_confirm_new_game", "new_game_confirm", 1, -1, -1, -1, 1000),
+    ("load_confirm_quit", "quit_confirm", 1, -1, -1, -1, 1000),
     ("save_slots", "save", 1, -1, -1, -1, 1000),
     ("save_overwrite", "save_overwrite", 1, -1, -1, -1, 1000),
     ("save_overwrite_yes", "save_overwrite", 2, -1, -1, -1, 1000),
@@ -695,6 +702,8 @@ pub fn init() -> Result<bool, String> {
         "savegame" => Scenario::SaveGame,
         "motion" => Scenario::Motion,
         "pedhit" => Scenario::PedHit,
+        "screenshot" => Scenario::Screenshot,
+        "menuwalk" => Scenario::MenuWalk,
         "scanner" => Scenario::Scanner,
         "scenes" => Scenario::Scenes,
         "menus" => Scenario::Menus,
@@ -866,7 +875,7 @@ impl Driver {
                         log("starting a new game");
                         self.phase = Phase::WaitPlaying;
                     }
-                    Scenario::SaveLoad | Scenario::Audio | Scenario::Formats | Scenario::TexMods | Scenario::Gamepad | Scenario::Spots | Scenario::SaveGame | Scenario::Motion | Scenario::PedHit | Scenario::Scanner | Scenario::Scenes | Scenario::Menus | Scenario::PadScript | Scenario::MenuSweep => {
+                    Scenario::SaveLoad | Scenario::Audio | Scenario::Formats | Scenario::TexMods | Scenario::Gamepad | Scenario::Spots | Scenario::SaveGame | Scenario::Motion | Scenario::PedHit | Scenario::Scanner | Scenario::Scenes | Scenario::Menus | Scenario::PadScript | Scenario::MenuSweep | Scenario::Screenshot | Scenario::MenuWalk => {
                         if unsafe { revc_test_load_slot(self.slot) } == 0 {
                             self.fail(format!("save slot {} missing or invalid", self.slot + 1));
                             return self.finish();
@@ -923,6 +932,17 @@ impl Driver {
                     }
                     log("scanner: player in a police car, wanted level 2; recording 30 s".to_string());
                     self.phase = Phase::Scanner { t0: unsafe { revc_test_game_ms() } };
+                    return false;
+                }
+                if self.scenario == Scenario::MenuWalk {
+                    self.phase = Phase::MenuWalk;
+                    return false;
+                }
+                if self.scenario == Scenario::Screenshot {
+                    // the game's screenshot key (core/main.cpp): it crashed when librw's camera
+                    // readback came back empty; now the host saves the next frame
+                    crate::host::inject_key(1012, true);
+                    self.phase = Phase::Screenshot { frame: 0 };
                     return false;
                 }
                 if self.scenario == Scenario::PedHit {
@@ -1360,6 +1380,41 @@ impl Driver {
                     }
                 }
                 self.phase = Phase::PadScript { frame: frame + 1 };
+            }
+            Phase::MenuWalk => {
+                // every page reachable in the console style's menu (testhooks.cpp revc_test_menu_walk):
+                // none may be a PC menu page outside the listed exceptions
+                let (mut page, mut row) = (0i32, 0i32);
+                unsafe { revc_test_sweep_state(0, &mut page, &mut row) };
+                if unsafe { revc_test_menu_state(page, 0, -1, -1, -1) } == 0 {
+                    return false; // (opening the menu first)
+                }
+                let mut buf = vec![0 as std::ffi::c_char; 4096];
+                let bad = unsafe { revc_test_menu_walk(buf.as_mut_ptr(), buf.len() as i32) };
+                let text: String = buf.iter().take_while(|&&c| c != 0).map(|&c| c as u8 as char).collect();
+                log(format!("menu walk (style {}): {bad} switch(es) to a PC page: {text}", crate::texmods::style()));
+                if bad > 0 {
+                    self.fail(format!("menu walk: {bad} switch(es) end on a PC menu page"));
+                }
+                return self.finish();
+            }
+            Phase::Screenshot { frame } => {
+                // held over several frames: the pads update in the 30 Hz step, not every frame
+                if frame == 10 {
+                    crate::host::inject_key(1012, false);
+                }
+                let shot = std::fs::read_dir(".").ok().and_then(|d| {
+                    d.flatten().map(|e| e.file_name().to_string_lossy().into_owned()).find(|n| n.starts_with("screen_") && n.ends_with(".png"))
+                });
+                if let Some(n) = shot {
+                    log(format!("screenshot: F12 saved {n} after {frame} frames"));
+                    return self.finish();
+                }
+                if frame >= 120 {
+                    self.fail("screenshot: F12 saved no screen_*.png within 120 frames".into());
+                    return self.finish();
+                }
+                self.phase = Phase::Screenshot { frame: frame + 1 };
             }
             Phase::Scene { idx, base, stage } => {
                 let scenes = scene_list();

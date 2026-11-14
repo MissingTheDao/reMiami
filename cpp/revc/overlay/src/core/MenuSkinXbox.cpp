@@ -237,7 +237,8 @@ MenuSkinXboxTapeDeck(const CRect &r, const CRGBA &col)
 bool
 MenuSkinXboxDialog(int page)
 {
-	return page == MENUPAGE_NEW_GAME_RELOAD || page == MENUPAGE_LOAD_SLOT_CONFIRM || page == MENUPAGE_DELETE_SLOT_CONFIRM;
+	return page == MENUPAGE_NEW_GAME_RELOAD || page == MENUPAGE_LOAD_SLOT_CONFIRM || page == MENUPAGE_DELETE_SLOT_CONFIRM ||
+		page == MENUPAGE_EXIT;	// (revc: the quit dialog, from "quit game" on the Load page)
 }
 
 // Behind a dialog the console dims the title, logo, icon bar and help line too (to about 45 %).

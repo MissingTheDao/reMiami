@@ -140,8 +140,11 @@ Around Ocean Beach:
       flamethrower; no test scene reaches it. [R4]
 - [ ] Xbox style, cutscenes: the characters' hands are the Xbox's (skin-coloured, posed). On a
       real Xbox, are the characters' toes shrunk in cutscenes? (reMiami leaves them alone.) [R4]
-- [ ] PS2 style: the radio stations, the hotel phone call's speech and the ambience sound like the
-      PS2 (from the PS2 import); switching to the PC style mid-drive keeps the radio going. [R5b]
+- [ ] PS2 and Xbox styles: "quit game" on the Load page asks first and quits; "no" returns to the
+      Load page. No menu path shows the PC menu's pages (Options, New Game). [menus]
+- [ ] PS2 style: the hotel phone call's speech and the ambience sound like the PS2 (from the PS2
+      import); switching to the PC style mid-drive keeps the radio going. (Radio stations, sound
+      effects and the police scanner: checked by the user 2026-11-14, "sound great".) [R5b]
 - [ ] In the PS2 style, burning cars and explosions look like on a PS2 (orange, as the PC); only
       compared against stills from an unreliable savestate so far. [R4]
 

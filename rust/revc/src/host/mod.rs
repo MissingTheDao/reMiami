@@ -382,6 +382,48 @@ pub fn take_capture() -> Option<(u32, u32, Vec<u8>)> {
     with(|h| h.captured.take())
 }
 
+static SCREENSHOT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The game's screenshot key (F12, or the second pad's left stick click; core/main.cpp): the next
+/// presented frame is saved as screen_<unix time>.png in the game folder, as the original did.
+/// (librw's camera readback has no pixels in this renderer, so it goes through the capture.)
+#[unsafe(no_mangle)]
+pub extern "C" fn revc_screenshot_request() {
+    // The key reads as "just down" for a whole 30 Hz step and the request comes from the end of
+    // every drawn frame, so several frames of one step ask: one screenshot per press.
+    static LAST: std::sync::Mutex<Option<std::time::Instant>> = std::sync::Mutex::new(None);
+    let mut last = LAST.lock().unwrap_or_else(|e| e.into_inner());
+    if last.is_some_and(|t| t.elapsed() < std::time::Duration::from_millis(250)) {
+        return;
+    }
+    *last = Some(std::time::Instant::now());
+    SCREENSHOT.store(true, std::sync::atomic::Ordering::Relaxed);
+    request_capture();
+}
+
+/// Writes a requested screenshot once its frame has been captured (main loop, every frame).
+pub fn poll_screenshot() {
+    if !SCREENSHOT.load(std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    let Some((w, h, rgba)) = take_capture() else { return };
+    SCREENSHOT.store(false, std::sync::atomic::Ordering::Relaxed);
+    let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+    let path = format!("screen_{secs:011}.png");
+    let write = || -> Result<(), String> {
+        let file = std::fs::File::create(&path).map_err(|e| e.to_string())?;
+        let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        let mut wr = enc.write_header().map_err(|e| e.to_string())?;
+        wr.write_image_data(&rgba).map_err(|e| e.to_string())
+    };
+    match write() {
+        Ok(()) => eprintln!("revc: screenshot {path}"),
+        Err(e) => eprintln!("revc: screenshot {path}: {e}"),
+    }
+}
+
 static WINDOW_API: HostWindowApi = HostWindowApi {
     user: null_mut(),
     num_displays: api_num_displays,

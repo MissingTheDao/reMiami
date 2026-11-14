@@ -198,7 +198,22 @@
  
  static RwBool		  ForegroundApp = TRUE;
  static RwBool		  WindowIconified = FALSE;
-@@ -241,8 +250,44 @@
+@@ -156,9 +165,12 @@
+ 	}
+ #else
+ 	rw::Image *image = RwCameraGetRaster(pCamera)->toImage();
+-	image->removeMask();
+-	if(image)
++	// revc: the readback can fail (no image): the menu then has no background picture instead of
++	// a crash
++	if(image){
++		image->removeMask();
+ 		return image;
++	}
+ #endif
+ 	return nil;
+ }
+@@ -241,8 +253,44 @@
   *****************************************************************************
   */
  
@@ -244,7 +259,7 @@
  
  /*
   *****************************************************************************
-@@ -1249,40 +1294,19 @@
+@@ -1249,40 +1297,19 @@
  /*
   *****************************************************************************
   */
@@ -255,7 +270,15 @@
 -	CMDSTR cmdLine,
 -	int cmdShow)
 -{
--
++// The main loop lives in Rust (rust/revc/src/main.rs):
++//   revc_game_init(argc, argv);
++//   loop { r = revc_game_frame_begin(); if r == 0 break; if r == 1 { poll events; revc_game_frame_run(); } }
++//   revc_game_shutdown();
++// One begin/run pair is one iteration of the original loop. A "session" is one run of the
++// original inner loop; it restarts (without leaving the process) when a game is loaded or
++// started from the menu.
++static bool SessionStarted = false;
+ 
 -	RwInt32 argc;
 -	RwChar** argv;
 -	SystemParametersInfo(SPI_SETFOREGROUNDLOCKTIMEOUT, 0, nil, SPIF_SENDCHANGE);
@@ -269,33 +292,25 @@
 -		freopen("CONOUT$", "w", stderr);
 -	}
 -#endif
-+// The main loop lives in Rust (rust/revc/src/main.rs):
-+//   revc_game_init(argc, argv);
-+//   loop { r = revc_game_frame_begin(); if r == 0 break; if r == 1 { poll events; revc_game_frame_run(); } }
-+//   revc_game_shutdown();
-+// One begin/run pair is one iteration of the original loop. A "session" is one run of the
-+// original inner loop; it restarts (without leaving the process) when a game is loaded or
-+// started from the menu.
-+static bool SessionStarted = false;
- 
+-
 -#elif defined(REVC_RUST_MAIN)
 -// Rust owns main() (rust/revc); it calls this with the process argv.
+-extern "C" int
+-revc_cpp_main(int argc, char *argv[])
+-{
+-#else
+-// Called from Rust main() with the process argv.
 +// Process start: platform and RenderWare initialisation, settings. Returns 0 on failure.
  extern "C" int
 -revc_cpp_main(int argc, char *argv[])
 +revc_game_init(int argc, char *argv[])
  {
--#else
--// Called from Rust main() with the process argv.
--extern "C" int
--revc_cpp_main(int argc, char *argv[])
--{
 -#endif
 -	RwV2d pos;
  	RwInt32 i;
  
  #ifdef USE_CUSTOM_ALLOCATOR
-@@ -1416,8 +1440,21 @@
+@@ -1416,8 +1443,21 @@
  #endif
  	
  
@@ -318,7 +333,7 @@
  		RwInitialised = TRUE;
  		
  		/* 
-@@ -1451,49 +1488,146 @@
+@@ -1451,49 +1491,146 @@
  		TheMemoryCard.m_bWantToLoad = false;
  		
  		CTimer::Update();
@@ -493,7 +508,7 @@
  //					    else if (CPad::GetPad(0)->GetLeftMouseJustDown())
  //						    ++gGameState;
  //					    else if (CPad::GetPad(0)->GetEnterJustDown())
-@@ -1505,11 +1639,11 @@
+@@ -1505,11 +1642,11 @@
  //					    else if (CPad::GetPad(0)->GetTabJustDown())
  //						    ++gGameState;
  
@@ -509,7 +524,7 @@
  //#ifndef NO_MOVIES
  //					    CloseClip();
  //					    CoUninitialize();
-@@ -1520,17 +1654,17 @@
+@@ -1520,17 +1657,17 @@
  //					    else
  //						    PlayMovieInWindow(cmdShow, "movies\\GTAtitles.mpg");
  
@@ -534,7 +549,7 @@
  //					    else if (CPad::GetPad(0)->GetLeftMouseJustDown())
  //						    ++gGameState;
  //					    else if (CPad::GetPad(0)->GetEnterJustDown())
-@@ -1542,229 +1676,189 @@
+@@ -1542,229 +1679,189 @@
  //					    else if (CPad::GetPad(0)->GetTabJustDown())
  //						    ++gGameState;
  
@@ -915,7 +930,7 @@
  	
  #ifndef MASTER
  	if ( gbModelViewer )
-@@ -1790,7 +1884,6 @@
+@@ -1790,7 +1887,6 @@
  	RsEventHandler(rsTERMINATE, nil);
  
  
@@ -923,7 +938,7 @@
  }
  
  /*
-@@ -1836,11 +1929,22 @@
+@@ -1836,11 +1932,22 @@
  
  		// the host (like glfw) returns 0.0 for non-existent axes(which is bullocks) so we treat it as deadzone, and keep value of previous frame.
  		// otherwise if this axis is present, -1 = released, 1 = pressed
@@ -948,7 +963,7 @@
  	}
  	// TODO? L2-R2 axes(not buttons-that's fine) on joysticks that don't have SDL gamepad mapping AREN'T handled, and I think it's impossible to do without mapping.
  
-@@ -1879,24 +1983,69 @@
+@@ -1879,24 +1986,69 @@
  		
  		CPad *pad = CPad::GetPad(bs.padID);
  
@@ -1028,7 +1043,7 @@
  extern "C" void revc_on_joystick(int jid, int connected)
  {
  	if (!HostCallbacksEnabled)
-@@ -1918,10 +2067,15 @@
+@@ -1918,10 +2070,15 @@
  
  	} else if (!connected) {
  		if (PSGLOBAL(joy1id) == jid) {

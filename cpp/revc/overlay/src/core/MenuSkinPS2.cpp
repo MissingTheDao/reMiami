@@ -208,7 +208,8 @@ static int
 CurrentTab(int page)
 {
 	// the load/new-game confirmations belong to the load tab, as on the PS2
-	if (page == MENUPAGE_NEW_GAME_RELOAD || page == MENUPAGE_LOAD_SLOT_CONFIRM || page == MENUPAGE_DELETE_SLOT_CONFIRM)
+	if (page == MENUPAGE_NEW_GAME_RELOAD || page == MENUPAGE_LOAD_SLOT_CONFIRM || page == MENUPAGE_DELETE_SLOT_CONFIRM ||
+	    page == MENUPAGE_EXIT)	// (revc: the quit dialog, from the Load page's "quit game")
 		page = MENUPAGE_CHOOSE_LOAD_SLOT;
 	for (int i = 0; i < (int)ARRAY_SIZE(tabs); i++)
 		if (tabs[i].page == page || tabs[i].alt == page)

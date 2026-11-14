@@ -171,6 +171,7 @@ fn main() -> ExitCode {
             1 => {
                 host::poll_events();
                 unsafe { revc_game_frame_run() };
+                host::poll_screenshot();
             }
             _ => {} // session restarted (game loaded or new game)
         }

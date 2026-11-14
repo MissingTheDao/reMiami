@@ -15,6 +15,7 @@
 # gamepad: virtual SDL pads: detection, player 1/2 assignment, prompt glyphs per pad (screenshots vs
 #   tests/reference/gamepad/), rumble.
 # spots: screenshots at fixed places on the map (no peds/traffic, noon, sunny) vs tests/reference/spots/.
+# screenshot: presses F12 in game; the game saves screen_<time>.png (it crashed before).
 # motion: walks and turns at a fixed 144 fps with render interpolation, checks the player moves
 #   smoothly (jitter of body and bones), and makes rust/target/test-output/motion.mp4 to watch.
 # A scenario uses tests/config/<scenario>.ini if present, else tests/config/reVC.ini.
@@ -36,7 +37,7 @@ for a in "$@"; do
     *) SCENARIOS+=("$a") ;;
   esac
 done
-(( ${#SCENARIOS[@]} )) || SCENARIOS=(boot saveload savegame oldsave formats texmods gamepad spots motion pedhit)
+(( ${#SCENARIOS[@]} )) || SCENARIOS=(boot saveload savegame oldsave formats texmods gamepad spots motion pedhit screenshot)
 
 GAME=${REVC_GAME_DIR:-$ROOT/game}
 [[ -d "$GAME/models" ]] || { echo "game data not found at $GAME (set REVC_GAME_DIR)" >&2; exit 2; }
